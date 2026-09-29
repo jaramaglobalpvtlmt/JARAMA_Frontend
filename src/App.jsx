@@ -85,11 +85,12 @@ function App() {
     event.preventDefault()
     if (!siteConfig.enquiryEndpoint) {
       setFormStatus('unconfigured')
+      setFormError('This front-end build is not connected to a live enquiry API yet.')
       return
     }
 
     setFormStatus('sending')
-  setFormError('')
+    setFormError('')
     const formElement = event.currentTarget
     const formData = new FormData(formElement)
 
@@ -109,7 +110,7 @@ function App() {
       setFormStatus('error')
       setFormError(
         error instanceof TypeError
-          ? 'The enquiry service is offline. Start the Spring Boot API on port 8080, then try again.'
+          ? 'The enquiry service is offline or not configured for this front-end build.'
           : error.message,
       )
     }

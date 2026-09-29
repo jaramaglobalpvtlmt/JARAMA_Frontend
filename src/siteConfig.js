@@ -10,7 +10,7 @@ export const siteConfig = {
   district: 'Vikarabad',
   state: 'TELANGANA',
   pincode: '501202',
-  enquiryEndpoint: '/api/enquiries',
+  enquiryEndpoint: '',
   heroImage:
     'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=2400&q=88',
   aboutImage:

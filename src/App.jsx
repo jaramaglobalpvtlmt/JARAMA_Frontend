@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { siteConfig } from './siteConfig.js'
 import './App.css'
 
@@ -73,6 +73,7 @@ function App() {
   const [activeMenu, setActiveMenu] = useState(null)
   const [formStatus, setFormStatus] = useState('idle')
   const [formError, setFormError] = useState('')
+  const isSubmittingEnquiry = useRef(false)
   const [chatInput, setChatInput] = useState('')
   const [chatMessages, setChatMessages] = useState([
     {
@@ -83,36 +84,56 @@ function App() {
 
   async function handleEnquirySubmit(event) {
     event.preventDefault()
-    if (!siteConfig.enquiryEndpoint) {
-      setFormStatus('unconfigured')
-      setFormError('This front-end build is not connected to a live enquiry API yet.')
+    if (isSubmittingEnquiry.current || formStatus === 'sending') return
+
+    const formElement = event.currentTarget
+    const formData = new FormData(formElement)
+    const enquiry = {
+      name: String(formData.get('name') ?? '').trim(),
+      email: String(formData.get('email') ?? '').trim(),
+      phone: String(formData.get('phone') ?? '').trim(),
+      query: String(formData.get('query') ?? '').trim(),
+    }
+    const emailInput = formElement.elements.namedItem('email')
+
+    if (!enquiry.name || !enquiry.email || !enquiry.phone) {
+      setFormStatus('error')
+      setFormError('Please enter your name, email address, and phone number.')
       return
     }
 
+    if (!emailInput.validity.valid) {
+      setFormStatus('error')
+      setFormError('Please enter a valid email address.')
+      return
+    }
+
+    isSubmittingEnquiry.current = true
     setFormStatus('sending')
     setFormError('')
-    const formElement = event.currentTarget
-    const formData = new FormData(formElement)
-
     try {
-      const response = await fetch(siteConfig.enquiryEndpoint, {
+      const response = await fetch('/api/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.fromEntries(formData.entries())),
+        body: JSON.stringify(enquiry),
       })
-      if (!response.ok) {
-        const errorResponse = await response.json().catch(() => null)
-        throw new Error(errorResponse?.message || 'The enquiry could not be delivered.')
+
+      let apiReportedSuccess = response.status === 201
+      if (!apiReportedSuccess && response.ok && response.headers.get('content-type')?.includes('application/json')) {
+        const responseBody = await response.json().catch(() => null)
+        apiReportedSuccess = responseBody?.success === true
+      }
+      if (!apiReportedSuccess) {
+        throw new Error('The enquiry could not be sent. Please try again.')
       }
       formElement.reset()
       setFormStatus('sent')
-    } catch (error) {
+      setFormError('')
+    } catch {
       setFormStatus('error')
-      setFormError(
-        error instanceof TypeError
-          ? 'The enquiry service is offline or not configured for this front-end build.'
-          : error.message,
-      )
+      setFormError('We could not send your enquiry. Please try again.')
+    } finally {
+      isSubmittingEnquiry.current = false
     }
   }
 
@@ -190,18 +211,20 @@ function App() {
         <section className="products-section content-section" id="products">
           <div className="section-heading">
             <div>
-              <p className="eyebrow"><span /> What we do</p>
-              <h2>Trade support,<br /><em>thought through.</em></h2>
+              <p className="eyebrow"><span /> Our products</p>
+              <h2>Grown with care,<br /><em>ready to travel.</em></h2>
             </div>
-            <p className="section-summary">From the first supplier conversation to the final handoff, we help make international trade feel more manageable.</p>
+            <p className="section-summary">Fruits, vegetables, spices, and tamarind sourced for businesses looking to reach markets around the world.</p>
           </div>
-          <div className="service-list">
-            {siteConfig.services.map((service, index) => (
-              <article className="service-row" key={service.title}>
-                <span className="service-number">0{index + 1}</span>
-                <h3>{service.title}</h3>
-                <p>{service.description}</p>
-                <a href="#enquire" aria-label={`Ask us about ${service.title}`}>↗</a>
+          <div className="product-grid">
+            {siteConfig.products.map((product) => (
+              <article className="product-item" key={product.title}>
+                <img className="product-image" src={product.image} alt={product.imageAlt} loading="lazy" />
+                <div className="product-copy">
+                  <h3>{product.title}</h3>
+                  <p>{product.description}</p>
+                  {product.credit && <a className="image-credit" href={product.credit.href} rel="noreferrer" target="_blank">Photo: {product.credit.label}</a>}
+                </div>
               </article>
             ))}
           </div>
@@ -226,6 +249,10 @@ function App() {
                 <dt>Date of incorporation</dt>
                 <dd>{siteConfig.dateOfIncorporation}</dd>
               </div>
+              <div className="company-sourcing">
+                <dt>Sourcing regions</dt>
+                <dd>{siteConfig.sourcingRegions.join(' · ')}</dd>
+              </div>
               <div className="company-address">
                 <dt>Office address</dt>
                 <dd>{siteConfig.addressLine1}<br />{siteConfig.city}, {siteConfig.district} District<br />{siteConfig.state} {siteConfig.pincode}</dd>
@@ -241,9 +268,9 @@ function App() {
             <h2>Let’s make<br /><em>it happen.</em></h2>
             <p className="contact-intro">Tell us a little about what you have in mind. We’ll take it from there.</p>
             <div className="contact-detail">
-              <span>OFFICIAL ENQUIRIES</span>
+              <span>EMAIL US</span>
               <a href={`mailto:${siteConfig.officialEmail}`}>{siteConfig.officialEmail}</a>
-              <a aria-label={`Call ${siteConfig.contactNumber}`} href={`tel:${siteConfig.contactNumber}`}>{siteConfig.contactNumber}</a>
+              <a aria-label={`Call +91 ${siteConfig.contactNumber}`} href={`tel:+91${siteConfig.contactNumber}`}>+91 {siteConfig.contactNumber}</a>
             </div>
           </div>
 
@@ -262,15 +289,14 @@ function App() {
               <input autoComplete="tel" name="phone" placeholder="+1 555 000 0000" type="tel" required />
             </label>
             <label>
-              <span>What are you looking to do? <small>Optional</small></span>
-              <textarea name="message" placeholder="A product, a market, a question..." rows="2" />
+              <span>Query <small>Optional</small></span>
+              <textarea name="query" placeholder="A product, a market, a question..." rows="2" />
             </label>
             <button className="submit-button" disabled={formStatus === 'sending'} type="submit">
               {formStatus === 'sending' ? 'Sending…' : 'Submit enquiry'} <span aria-hidden="true">↗</span>
             </button>
             <p className={`form-feedback ${formStatus}`} aria-live="polite">
-              {formStatus === 'unconfigured' && 'Online delivery is not connected yet. Please contact JARAMA directly once the official email is added.'}
-              {formStatus === 'sent' && 'Your enquiry has been sent. Thank you for reaching out.'}
+              {formStatus === 'sent' && 'Thank you for reaching out to us. We will get back to you soon.'}
               {formStatus === 'error' && formError}
             </p>
           </form>
@@ -306,7 +332,6 @@ function App() {
           <img className="brand-logo" src="/LOGO.png" alt="" />
         </a>
         <p>Good trade starts with good people.</p>
-        <span>{siteConfig.publicSiteDomain || 'Website domain to be added'}</span>
         <a href="#home">Back to top ↑</a>
       </footer>
     </>

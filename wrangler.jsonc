@@ -1,8 +1,18 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "jarama-frontend",
-  "compatibility_date": "2026-09-30",
-  "assets": {
-    "not_found_handling": "single-page-application"
-  }
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "jarama-frontend",
+	"main": "./src/worker.js",
+	"compatibility_date": "2026-09-30",
+	"assets": {
+		"not_found_handling": "single-page-application",
+		"binding": "ASSETS",
+		"run_worker_first": ["/api/*"]
+	},
+	"d1_databases": [
+		{
+			"binding": "jarama_enquiries",
+			"database_name": "jarama-enquiries",
+			"database_id": "8d064740-664c-41bf-a2dc-cfe3c04769e1"
+		}
+	]
 }

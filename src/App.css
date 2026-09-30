@@ -59,13 +59,13 @@
 .section-heading h2, .contact-heading h2 { color: var(--ink); font-size: clamp(42px, 5vw, 67px); }
 .section-heading h2 { margin-top: 19px; }
 .section-summary { max-width: 355px; margin: 0 0 4px; color: var(--muted); font-size: 13px; line-height: 1.8; }
-.service-row { display: grid; min-height: 104px; padding: 23px 0; grid-template-columns: 54px minmax(200px, 0.9fr) minmax(260px, 1fr) 38px; align-items: center; gap: 22px; border-top: 1px solid var(--line); }
-.service-row:last-child { border-bottom: 1px solid var(--line); }
-.service-number { align-self: start; padding-top: 5px; color: var(--orange); font-size: 10px; font-weight: 700; }
-.service-row h3 { margin: 0; color: var(--green-deep); font-family: var(--display); font-size: 22px; font-weight: 500; }
-.service-row p { max-width: 430px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
-.service-row > a { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--green); text-decoration: none; transition: color 150ms ease, background 150ms ease, border-color 150ms ease; }
-.service-row > a:hover { border-color: var(--green); color: var(--white); background: var(--green); }
+.product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.product-item { min-width: 0; }
+.product-image { width: 100%; aspect-ratio: 4 / 4.8; object-fit: cover; background: #e8e9df; }
+.product-copy { padding: 17px 2px 0; }
+.product-copy h3 { margin: 0; color: var(--green-deep); font-family: var(--display); font-size: 23px; font-weight: 500; }
+.product-copy p { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.image-credit { display: inline-block; margin-top: 9px; color: var(--muted); font-size: 9px; line-height: 1.5; text-underline-offset: 2px; }
 
 .about-section { display: grid; min-height: 560px; grid-template-columns: 1fr 1fr; background: var(--green-deep); }
 .about-photo-wrap { position: relative; min-height: 480px; overflow: hidden; }
@@ -79,7 +79,7 @@
 .company-facts { display: grid; width: 100%; margin: 25px 0 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 14px; }
 .company-facts dt { color: rgb(255 255 255 / 62%); font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 .company-facts dd { margin: 5px 0 0; color: var(--white); font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
-.company-address { grid-column: 1 / -1; }
+.company-sourcing, .company-address { grid-column: 1 / -1; }
 .light-text-link { margin-top: 34px; padding-bottom: 8px; border-bottom: 1px solid rgb(255 255 255 / 48%); }
 
 .contact-section { display: grid; width: min(100%, 1280px); margin: 0 auto; padding: 100px clamp(24px, 8vw, 128px) 108px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 36px; }
@@ -142,7 +142,8 @@
   .main-nav { gap: 20px; }
   .intro-band { grid-template-columns: 1fr auto; gap: 20px 30px; }
   .intro-band .eyebrow { grid-column: 1 / -1; margin: 0; }
-  .service-row { grid-template-columns: 32px minmax(170px, 0.9fr) minmax(200px, 1fr) 34px; gap: 14px; }
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; }
+  .product-image { aspect-ratio: 1 / 1; }
   .contact-section { gap: 24px; }
   .enquiry-form, .chat-panel { padding: 22px; }
   .site-footer { padding-inline: 28px; }
@@ -167,10 +168,10 @@
   .content-section { padding: 72px 24px 78px; }
   .section-heading { margin-bottom: 34px; align-items: flex-start; flex-direction: column; gap: 19px; }
   .section-heading h2, .contact-heading h2 { font-size: 48px; }
-  .service-row { min-height: 0; padding: 19px 0; grid-template-columns: 26px 1fr 35px; gap: 8px 13px; }
-  .service-row h3 { font-size: 20px; }
-  .service-row p { grid-column: 2; font-size: 11px; }
-  .service-row > a { grid-column: 3; grid-row: 1 / span 2; }
+  .product-grid { gap: 25px 12px; }
+  .product-copy { padding-top: 12px; }
+  .product-copy h3 { font-size: 19px; }
+  .product-copy p { font-size: 10px; }
   .about-section { grid-template-columns: 1fr; }
   .about-photo-wrap { min-height: 380px; }
   .about-copy { padding: 59px 26px 66px; }

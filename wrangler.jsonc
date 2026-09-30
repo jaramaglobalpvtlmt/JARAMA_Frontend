@@ -14,5 +14,8 @@
 			"database_name": "jarama-enquiries",
 			"database_id": "8d064740-664c-41bf-a2dc-cfe3c04769e1"
 		}
-	]
+	],
+	"vars": {
+		"ENQUIRY_NOTIFICATION_EMAIL": "jaramaglobalpvtlmt@gmail.com"
+	}
 }

@@ -118,20 +118,21 @@ function App() {
         body: JSON.stringify(enquiry),
       })
 
-      let apiReportedSuccess = response.status === 201
-      if (!apiReportedSuccess && response.ok && response.headers.get('content-type')?.includes('application/json')) {
-        const responseBody = await response.json().catch(() => null)
-        apiReportedSuccess = responseBody?.success === true
-      }
+      const responseIsJson = response.headers.get('content-type')?.includes('application/json')
+      const responseBody = responseIsJson ? await response.json().catch(() => null) : null
+      const apiReportedSuccess = response.status === 201 || (response.ok && responseBody?.success === true)
       if (!apiReportedSuccess) {
-        throw new Error('The enquiry could not be sent. Please try again.')
+        const errorMessage = responseBody?.code === 'EMAIL_NOTIFICATION_FAILED'
+          ? 'Your enquiry was saved, but its email notification could not be sent. Please contact us directly.'
+          : 'The enquiry could not be sent. Please try again.'
+        throw new Error(errorMessage)
       }
       formElement.reset()
       setFormStatus('sent')
       setFormError('')
-    } catch {
+    } catch (error) {
       setFormStatus('error')
-      setFormError('We could not send your enquiry. Please try again.')
+      setFormError(error instanceof Error ? error.message : 'We could not send your enquiry. Please try again.')
     } finally {
       isSubmittingEnquiry.current = false
     }

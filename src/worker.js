@@ -5,6 +5,35 @@ function jsonResponse(body, status) {
   })
 }
 
+async function sendEnquiryNotification(env, enquiry) {
+  if (!env.RESEND_API_KEY || !env.ENQUIRY_NOTIFICATION_EMAIL) {
+    return false
+  }
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'JARAMA GLOBAL TRADE <website@jaramaglobaltrade.com>',
+      to: [env.ENQUIRY_NOTIFICATION_EMAIL],
+      subject: 'New Website Enquiry — JARAMA GLOBAL TRADE',
+      text: [
+        `Enquiry number: ${enquiry.enquiryNumber}`,
+        `Date/time: ${enquiry.createdAt}`,
+        `Name: ${enquiry.name}`,
+        `Email: ${enquiry.email}`,
+        `Phone: ${enquiry.phone}`,
+        `Query: ${enquiry.query}`,
+      ].join('\n'),
+    }),
+  })
+
+  return response.ok
+}
+
 async function handleEnquiry(request, env) {
   if (request.method !== 'POST') {
     return jsonResponse({ success: false, message: 'Method not allowed.' }, 405)
@@ -54,6 +83,37 @@ async function handleEnquiry(request, env) {
     }
   } catch {
     return jsonResponse({ success: false, message: 'Unable to save your enquiry.' }, 500)
+  }
+
+  try {
+    const notificationSent = await sendEnquiryNotification(env, {
+      enquiryNumber,
+      createdAt,
+      name,
+      email,
+      phone,
+      query,
+    })
+
+    if (!notificationSent) {
+      return jsonResponse(
+        {
+          success: false,
+          code: 'EMAIL_NOTIFICATION_FAILED',
+          message: 'Your enquiry was saved, but its email notification could not be sent.',
+        },
+        502,
+      )
+    }
+  } catch {
+    return jsonResponse(
+      {
+        success: false,
+        code: 'EMAIL_NOTIFICATION_FAILED',
+        message: 'Your enquiry was saved, but its email notification could not be sent.',
+      },
+      502,
+    )
   }
 
   return jsonResponse({ success: true }, 201)

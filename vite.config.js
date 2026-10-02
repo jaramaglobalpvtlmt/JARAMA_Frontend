@@ -3,4 +3,9 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      '/api': 'https://jarama-frontend.jaramaglobalpvtlmt.workers.dev',
+    },
+  },
 })

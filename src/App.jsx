@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { siteConfig } from './siteConfig.js'
 import './App.css'
 
@@ -27,60 +27,145 @@ const navigation = [
   },
 ]
 
-const questions = [
-  {
-    question: 'What does JARAMA Global do?',
-    terms: ['what', 'do', 'services', 'jara', 'company'],
-    answer:
-      'JARAMA Global supports businesses with import and export sourcing, supplier coordination, and practical trade support. Tell us what you are looking to move and our team can discuss the right next step.',
-  },
-  {
-    question: 'Can you help with importing products?',
-    terms: ['import', 'bring', 'source', 'supplier'],
-    answer:
-      'We can help you explore product sourcing and import coordination. Share the product, origin or destination market, and approximate volume in the enquiry form so the team has a useful starting point.',
-  },
-  {
-    question: 'Do you support exports?',
-    terms: ['export', 'sell', 'overseas', 'international'],
-    answer:
-      'Yes, export sourcing and coordination are part of our draft service offering. The exact route depends on your product and target market, so send us a few details and we can take it from there.',
-  },
-  {
-    question: 'How do I request a quote?',
-    terms: ['quote', 'price', 'cost', 'estimate'],
-    answer:
-      'Use the enquiry form with your name, email, phone number, and a note about the product or route you have in mind. We can follow up to understand the requirements before preparing a quote.',
-  },
-  {
-    question: 'Which markets do you cover?',
-    terms: ['market', 'country', 'where', 'location', 'ship'],
-    answer:
-      'Market coverage is being finalized. Please include your origin and destination countries in the enquiry and the JARAMA team can confirm what is currently available.',
-  },
-]
-
-function findAnswer(message) {
-  const normalized = message.toLowerCase()
-  const match = questions.find(({ terms }) => terms.some((term) => normalized.includes(term)))
-  return (
-    match?.answer ??
-    'I do not have that detail yet. Leave your question and contact information in the enquiry form, and the JARAMA team can follow up with a more specific answer.'
-  )
-}
-
 function App() {
   const [activeMenu, setActiveMenu] = useState(null)
   const [formStatus, setFormStatus] = useState('idle')
   const [formError, setFormError] = useState('')
   const isSubmittingEnquiry = useRef(false)
-  const [chatInput, setChatInput] = useState('')
-  const [chatMessages, setChatMessages] = useState([
-    {
-      from: 'agent',
-      text: `Hello, I am the JARAMA guide. Ask me about ${siteConfig.companyName} or choose a question below.`,
-    },
-  ])
+  const [faqCategories, setFaqCategories] = useState([])
+  const [categoryFaqs, setCategoryFaqs] = useState([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null)
+  const [selectedFaqId, setSelectedFaqId] = useState('')
+  const [quickEnquiry, setQuickEnquiry] = useState('')
+  const enquiryQueryRef = useRef(null)
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true)
+  const [isLoadingFaqs, setIsLoadingFaqs] = useState(false)
+  const [isSearchingFaq, setIsSearchingFaq] = useState(false)
+  const [faqError, setFaqError] = useState('')
+  const selectedCategory = faqCategories.find((category) => category.id === selectedCategoryId)
+  const selectedFaq = categoryFaqs.find((faq) => String(faq.id) === selectedFaqId)
+
+  const faqLoadError = "Sorry, we're unable to load the Quick Chat options right now.\n\nPlease use our Contact or Enquiry option to reach us."
+
+  const loadFaqCategories = async () => {
+    try {
+      const response = await fetch('/api/faq/categories')
+      if (!response.ok) {
+        throw new Error('Unable to load Quick Chat options right now.')
+      }
+
+      const payload = await response.json()
+      const categories = Array.isArray(payload?.data) ? payload.data : []
+      setFaqCategories(categories)
+      setFaqError('')
+      if (!categories.length) {
+        setFaqError(faqLoadError)
+      }
+    } catch {
+      setFaqError(faqLoadError)
+    } finally {
+      setIsLoadingCategories(false)
+    }
+  }
+
+  const loadCategoryFaqs = async (categoryId) => {
+    setIsLoadingFaqs(true)
+    setFaqError('')
+
+    try {
+      const response = await fetch(`/api/faq/categories/${categoryId}/faqs`)
+      if (!response.ok) {
+        throw new Error('Unable to load the available questions.')
+      }
+
+      const payload = await response.json()
+      const faqs = Array.isArray(payload?.data) ? payload.data : []
+      setCategoryFaqs(faqs)
+      if (!faqs.length) {
+        setFaqError(faqLoadError)
+      }
+    } catch {
+      setFaqError(faqLoadError)
+    } finally {
+      setIsLoadingFaqs(false)
+    }
+  }
+
+  const handleFaqCategoryChange = (event) => {
+    const categoryId = Number(event.currentTarget.value) || null
+    setSelectedCategoryId(categoryId)
+    setSelectedFaqId('')
+    setCategoryFaqs([])
+    setFaqError('')
+
+    if (categoryId) {
+      void loadCategoryFaqs(categoryId)
+    }
+  }
+
+  const handleBackToQuickChat = () => {
+    setSelectedCategoryId(null)
+    setSelectedFaqId('')
+    setCategoryFaqs([])
+    setFaqError('')
+  }
+
+  const handleQuickEnquirySubmit = async (event) => {
+    event.preventDefault()
+    const query = quickEnquiry.trim()
+    if (!query || isSearchingFaq) return
+
+    setIsSearchingFaq(true)
+    setFaqError('')
+
+    try {
+      const searchResponse = await fetch(`/api/faq/search?q=${encodeURIComponent(query)}`)
+      if (!searchResponse.ok) throw new Error('FAQ search failed.')
+      const searchPayload = await searchResponse.json()
+      let matchedFaq = searchPayload?.data
+      let matchedCategory
+
+      if (matchedFaq) {
+        matchedCategory = faqCategories.find((category) => category.id === matchedFaq.category_id)
+      } else {
+        let categories = faqCategories
+        if (!categories.length) {
+          const categoriesResponse = await fetch('/api/faq/categories')
+          if (!categoriesResponse.ok) throw new Error('FAQ categories unavailable.')
+          const categoriesPayload = await categoriesResponse.json()
+          categories = Array.isArray(categoriesPayload?.data) ? categoriesPayload.data : []
+          setFaqCategories(categories)
+        }
+
+        matchedCategory = categories.find((category) => category.name.trim().toLowerCase() === 'contact & enquiries')
+        if (!matchedCategory) throw new Error('Contact category unavailable.')
+
+        const fallbackResponse = await fetch(`/api/faq/categories/${matchedCategory.id}/faqs`)
+        if (!fallbackResponse.ok) throw new Error('Fallback FAQ unavailable.')
+        const fallbackPayload = await fallbackResponse.json()
+        const fallbackFaqs = Array.isArray(fallbackPayload?.data) ? fallbackPayload.data : []
+        matchedFaq = fallbackFaqs.find((faq) => {
+          const buttonLabel = String(faq.button_label || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+          const question = String(faq.question || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+          return buttonLabel === 'cant find an answer' || question.includes('cant find an answer')
+        })
+      }
+
+      if (!matchedFaq || !matchedCategory) throw new Error('No matching FAQ found.')
+
+      setSelectedCategoryId(matchedCategory.id)
+      setCategoryFaqs([matchedFaq])
+      setSelectedFaqId(String(matchedFaq.id))
+    } catch {
+      setFaqError(faqLoadError)
+    } finally {
+      setIsSearchingFaq(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadFaqCategories()
+  }, [])
 
   async function handleEnquirySubmit(event) {
     event.preventDefault()
@@ -136,18 +221,6 @@ function App() {
     } finally {
       isSubmittingEnquiry.current = false
     }
-  }
-
-  function sendChatMessage(message = chatInput) {
-    const trimmedMessage = message.trim()
-    if (!trimmedMessage) return
-
-    setChatMessages((currentMessages) => [
-      ...currentMessages,
-      { from: 'visitor', text: trimmedMessage },
-      { from: 'agent', text: findAnswer(trimmedMessage) },
-    ])
-    setChatInput('')
   }
 
   return (
@@ -291,7 +364,7 @@ function App() {
             </label>
             <label>
               <span>Query <small>Optional</small></span>
-              <textarea name="query" placeholder="A product, a market, a question..." rows="2" />
+              <textarea ref={enquiryQueryRef} name="query" placeholder="A product, a market, a question..." rows="2" />
             </label>
             <button className="submit-button" disabled={formStatus === 'sending'} type="submit">
               {formStatus === 'sending' ? 'Sending…' : 'Submit enquiry'} <span aria-hidden="true">↗</span>
@@ -305,25 +378,80 @@ function App() {
           <section className="chat-panel" aria-labelledby="chat-title">
             <div className="chat-heading">
               <div className="agent-avatar" aria-hidden="true">J</div>
-              <div><h3 id="chat-title">JARAMA guide</h3><p><span /> Here to help</p></div>
-              <span className="chat-label">QUICK CHAT</span>
+              <div><h3 id="chat-title">Quick Chat</h3><p><span /> JARAMA Global Assistant</p></div>
             </div>
-            <div className="chat-messages" aria-live="polite" aria-relevant="additions">
-              {chatMessages.map((message, index) => (
-                <p className={`chat-message ${message.from}`} key={`${message.from}-${index}`}>{message.text}</p>
-              ))}
+            {!selectedCategoryId && (
+              <div className="chat-welcome">
+                <p>Hello! Welcome to JARAMA Global 👋</p>
+                <p>How can we help you today?</p>
+                <p>Choose an option below to get quick information about our import, export, sourcing and international trade services.</p>
+              </div>
+            )}
+            <div className="quick-chat-choices">
+              {faqError && <p className="chat-disclaimer faq-error">{faqError}</p>}
+              {isLoadingCategories && !selectedCategoryId && <p className="chat-disclaimer">Loading options...</p>}
+              {isLoadingFaqs && <p className="chat-disclaimer">Loading options...</p>}
+
+              {!isLoadingCategories && !faqError && (
+                <label className="quick-chat-field">
+                  <span>Choose a topic</span>
+                  <select onChange={handleFaqCategoryChange} value={selectedCategoryId ?? ''}>
+                    <option value="">Select a topic</option>
+                    {faqCategories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {selectedCategoryId && selectedCategory && (
+                <div className="selected-category-intro">
+                  <h4>{selectedCategory.name}</h4>
+                  {selectedCategory.description?.trim() && <p>{selectedCategory.description}</p>}
+                </div>
+              )}
+
+              {selectedCategoryId && !isLoadingFaqs && !faqError && (
+                <label className="quick-chat-field">
+                  <span>Choose a question</span>
+                  <select onChange={(event) => setSelectedFaqId(event.currentTarget.value)} value={selectedFaqId}>
+                    <option value="">Select a question</option>
+                    {categoryFaqs.map((faq) => (
+                      <option key={faq.id} value={faq.id}>{faq.button_label || faq.question}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {selectedFaq && (
+                <div className="selected-faq-answer" aria-live="polite">
+                  <h4>{selectedFaq.question}</h4>
+                  <p>{selectedFaq.answer}</p>
+                </div>
+              )}
+
+              {selectedFaq && (
+                <button className="faq-home-button" onClick={handleBackToQuickChat} type="button">
+                  ← Back to Quick Chat
+                </button>
+              )}
             </div>
-            <div className="suggested-questions" aria-label="Suggested questions">
-              {questions.slice(0, 3).map(({ question }) => (
-                <button key={question} onClick={() => sendChatMessage(question)} type="button">{question}</button>
-              ))}
-            </div>
-            <form className="chat-input-row" onSubmit={(event) => { event.preventDefault(); sendChatMessage() }}>
-              <label className="sr-only" htmlFor="chat-input">Ask the JARAMA guide</label>
-              <input id="chat-input" onChange={(event) => setChatInput(event.target.value)} placeholder="Write a message..." value={chatInput} />
-              <button aria-label="Send message" type="submit">↗</button>
-            </form>
-            <p className="chat-disclaimer">Automated answers · For specific advice, send an enquiry</p>
+            {!selectedCategoryId && (
+              <form className="quick-enquiry-form" onSubmit={handleQuickEnquirySubmit}>
+                <label htmlFor="quick-enquiry">Not seeing what you need?</label>
+                <div>
+                  <input
+                    id="quick-enquiry"
+                    onChange={(event) => setQuickEnquiry(event.target.value)}
+                    placeholder="Tell us what you are looking for"
+                    value={quickEnquiry}
+                  />
+                  <button disabled={isSearchingFaq || !quickEnquiry.trim()} type="submit">
+                    {isSearchingFaq ? 'Searching...' : 'Submit'}
+                  </button>
+                </div>
+              </form>
+            )}
           </section>
         </section>
       </main>

@@ -38,6 +38,10 @@ function App() {
   const [selectedFaqId, setSelectedFaqId] = useState('')
   const [quickEnquiry, setQuickEnquiry] = useState('')
   const enquiryQueryRef = useRef(null)
+  const chatLauncherRef = useRef(null)
+  const [isQuickChatOpen, setIsQuickChatOpen] = useState(false)
+  const [isQuickChatExpanded, setIsQuickChatExpanded] = useState(false)
+  const [isQuickChatHighlighted, setIsQuickChatHighlighted] = useState(false)
   const [isLoadingCategories, setIsLoadingCategories] = useState(true)
   const [isLoadingFaqs, setIsLoadingFaqs] = useState(false)
   const [isSearchingFaq, setIsSearchingFaq] = useState(false)
@@ -167,6 +171,22 @@ function App() {
     void loadFaqCategories()
   }, [])
 
+  useEffect(() => {
+    if (!isQuickChatOpen) return undefined
+
+    const handleChatEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsQuickChatOpen(false)
+        setIsQuickChatExpanded(false)
+        setIsQuickChatHighlighted(false)
+        chatLauncherRef.current?.focus()
+      }
+    }
+
+    window.addEventListener('keydown', handleChatEscape)
+    return () => window.removeEventListener('keydown', handleChatEscape)
+  }, [isQuickChatOpen])
+
   async function handleEnquirySubmit(event) {
     event.preventDefault()
     if (isSubmittingEnquiry.current || formStatus === 'sending') return
@@ -258,7 +278,17 @@ function App() {
               </div>
             )
           })}
-          <a className="nav-enquire" href="#enquire">Let’s talk <span aria-hidden="true">↗</span></a>
+          <a
+            className="nav-enquire"
+            href="#enquire"
+            onClick={() => {
+              setIsQuickChatOpen(true)
+              setIsQuickChatExpanded(true)
+              setIsQuickChatHighlighted(true)
+            }}
+          >
+            Let’s talk <span aria-hidden="true">↗</span>
+          </a>
         </nav>
       </header>
 
@@ -375,11 +405,24 @@ function App() {
             </p>
           </form>
 
-          <section className="chat-panel" aria-labelledby="chat-title">
-            <div className="chat-heading">
-              <div className="agent-avatar" aria-hidden="true">J</div>
-              <div><h3 id="chat-title">Quick Chat</h3><p><span /> JARAMA Global Assistant</p></div>
-            </div>
+          <div className={`quick-chat-widget${isQuickChatExpanded ? ' is-expanded' : ''}${isQuickChatHighlighted ? ' is-highlighted' : ''}`}>
+            {isQuickChatOpen && (
+              <section className="chat-panel quick-chat-popup" id="quick-chat-panel" aria-labelledby="chat-title">
+                <div className="chat-heading">
+                  <div className="agent-avatar" aria-hidden="true">J</div>
+                  <div><h3 id="chat-title">Quick Chat</h3><p><span /> JARAMA Global Assistant</p></div>
+                  <button
+                    aria-label="Close Quick Chat"
+                    className="chat-close-button"
+                    onClick={() => {
+                      setIsQuickChatOpen(false)
+                      setIsQuickChatExpanded(false)
+                      setIsQuickChatHighlighted(false)
+                      chatLauncherRef.current?.focus()
+                    }}
+                    type="button"
+                  >×</button>
+                </div>
             {!selectedCategoryId && (
               <div className="chat-welcome">
                 <p>Hello! Welcome to JARAMA Global 👋</p>
@@ -452,7 +495,29 @@ function App() {
                 </div>
               </form>
             )}
-          </section>
+              </section>
+            )}
+            <button
+              aria-controls="quick-chat-panel"
+              aria-expanded={isQuickChatOpen}
+              className="quick-chat-launcher"
+              onClick={() => {
+                if (isQuickChatOpen) {
+                  setIsQuickChatOpen(false)
+                  setIsQuickChatExpanded(false)
+                  setIsQuickChatHighlighted(false)
+                } else {
+                  setIsQuickChatOpen(true)
+                }
+              }}
+              ref={chatLauncherRef}
+              type="button"
+            >
+              <span className="quick-chat-launcher-avatar" aria-hidden="true">J</span>
+              <span>Quick Chat</span>
+              <span aria-hidden="true">{isQuickChatOpen ? '−' : '+'}</span>
+            </button>
+          </div>
         </section>
       </main>
 

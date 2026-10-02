@@ -71,10 +71,6 @@ export const siteConfig = {
       description: 'Tamarind pods for food, ingredient, and international trade markets.',
       image: tamarindImageUrl,
       imageAlt: 'Bagged tamarind pods with lemons',
-      credit: {
-        label: 'Leslie Seaton / Wikimedia Commons, CC BY 2.0',
-        href: 'https://commons.wikimedia.org/wiki/File:Tamarind_Pods_(5201031112).jpg',
-      },
     },
   ],
 }
